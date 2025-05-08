@@ -1,0 +1,15 @@
+<library path="src"> 
+    <class name="SmachControlPlugin" type="smach_control_widget.SmachControlPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+        An RQT plugin to manually trigger state transitions in a SMACH state machine.
+    </description>
+    <qtgui>
+        <group>
+        <label>Insulation Blower</label> <icon type="theme">folder</icon>
+        <statustip>Plugins related to robot control.</statustip>
+        </group>
+        <label>Smach State Controller</label> <icon type="theme">media-playback-start</icon>
+        <statustip>Control Smach State Machine Transitions.</statustip>
+    </qtgui>
+    </class>
+</library>
