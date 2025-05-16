@@ -3,7 +3,7 @@ project(robot_gui)
 
 find_package(catkin REQUIRED COMPONENTS
   python_qt_binding
-  robot_manager
+  mission_manager
   rospy
   rqt_gui
   std_msgs

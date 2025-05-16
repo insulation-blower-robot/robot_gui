@@ -4,11 +4,12 @@ import rospkg
 import roslaunch
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QGroupBox, QRadioButton, QSizePolicy
+from python_qt_binding.QtWidgets import *
 from python_qt_binding.QtCore import pyqtSignal
 from mission_manager.srv import Trigger, TriggerResponse
 from mission_manager.msg import Context
 from mission_manager.node_manager import NodeManager
+from cavity_detection_api.api import get_roi_by_id, move_roi, update_roi
 
 
 class SmachControlWidget(QWidget):
@@ -33,16 +34,56 @@ class SmachControlWidget(QWidget):
         self.btn_estop = QPushButton("EMERGENCY STOP")
 
         # Create radio buttons for exploration method
-        exp = QGroupBox("Exploration Method")
+        exp = QGroupBox("Exploration")
         exp_layout = QVBoxLayout()
         self.exp_teleop = QRadioButton("Teleop")
         self.exp_auto = QRadioButton("Autonomous")
-        self.exp_teleop.toggled.connect(self.update_exp)
-        self.exp_auto.toggled.connect(self.update_exp)
         exp_layout.addWidget(self.exp_teleop)
         exp_layout.addWidget(self.exp_auto)
+        self.exp_teleop.toggled.connect(self.update_exp)
+        self.exp_auto.toggled.connect(self.update_exp)
+        exp_layout.addWidget(self.btn_start_exploring)
+        exp_layout.addWidget(self.btn_done_exploring)
         exp.setLayout(exp_layout)
         exp.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+
+        target = QGroupBox("Target")
+        tar_layout = QVBoxLayout()
+        self.target_dropdown = QComboBox()
+        tar_layout.addWidget(self.target_dropdown)
+
+        form_layout = QFormLayout()
+        self.spin_x = QDoubleSpinBox()
+        self.spin_y = QDoubleSpinBox()
+        self.spin_theta = QDoubleSpinBox()
+        self.spin_length = QDoubleSpinBox()
+        self.spin_height = QDoubleSpinBox()
+        self.spin_spacing = QDoubleSpinBox()
+        self.spin_num_cavities = QSpinBox()
+        form_layout.addRow("x: ", self.spin_x)
+        form_layout.addRow("y: ", self.spin_y)
+        form_layout.addRow("θ: ", self.spin_theta)
+        form_layout.addRow("Length: ", self.spin_length) 
+        form_layout.addRow("Height: ", self.spin_height)
+        form_layout.addRow("Spacing: ", self.spin_spacing)
+        form_layout.addRow("Cavities: ", self.spin_num_cavities)
+        tar_layout.addLayout(form_layout)
+
+        # Split controls
+        split_layout = QFormLayout()
+        self.spin_from = QSpinBox()
+        self.spin_to = QSpinBox()
+        self.btn_split = QPushButton("Split Target")
+        split_layout.addRow("From: ", self.spin_from)
+        split_layout.addRow("To: ", self.spin_to)
+        split_layout.addRow(self.btn_split)
+        tar_layout.addLayout(split_layout)
+
+        # Go to target button
+        tar_layout.addWidget(self.btn_goto_target)
+        target.setLayout(tar_layout)
+
+
         # Create radio buttons for the fill method
         fill = QGroupBox("Fill Method")
         fill_layout = QVBoxLayout()
@@ -60,10 +101,7 @@ class SmachControlWidget(QWidget):
         # Add buttons to layout
         layout.addWidget(self.context_label)
         layout.addWidget(exp)
-        layout.addWidget(self.btn_start_robot)
-        layout.addWidget(self.btn_start_exploring)
-        layout.addWidget(self.btn_done_exploring)
-        layout.addWidget(self.btn_goto_target)
+        layout.addWidget(target)
         layout.addWidget(fill)
         layout.addWidget(self.btn_start_blowing)
         layout.addWidget(self.btn_done_blowing)
@@ -83,19 +121,15 @@ class SmachControlWidget(QWidget):
         rospy.Subscriber('/smach_context', Context, self._context_callback)
         self.smach_trigger_service = None
 
-                # Setup the roslaunch object during initialization
+        # Setup the roslaunch object during initialization
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         roslaunch.configure_logging(uuid)
-
         launch_file_path = roslaunch.rlutil.resolve_launch_arguments(["teleop_twist_joy", "teleop.launch"])[0]
         self.launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_file_path])
 
         self.start()
 
     def start(self):
-        # Start the node manager
-        # self.nodes = NodeManager("gui")
-        # self.nodes.start_all()
         self.btn_start_robot.setEnabled(False)
         service_name = '/smach_gui_confirmation'
         rospy.loginfo(f"Waiting for SMACH control service: {service_name}")
